@@ -57,6 +57,12 @@ defmodule MyFile.Descriptor do
     receive do
       {:io_op_req, :open} ->
         MyIO.log("file", "opened [#{path}]")
+        # This bit is important—without it, this file descriptor process would
+        # not be able to receive EXIT messages.
+        #
+        # Also note that one must set this flag on the process that will "react"
+        # to the exit of other linked processes that would also otherwise (i.e.,
+        # without the trap) cause the exit of this one.
         Process.flag(:trap_exit, true)
         send(parent, {:io_op_resp, :open})
         loop(parent, path)
