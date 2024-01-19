@@ -1,5 +1,18 @@
 defmodule KV.Bucket do
-  use Agent
+  use Agent,
+    # This :kv application *manages* buckets through the registry process. Since
+    # bucket processes are supervised (as they're initialized through a
+    # supervisor), when they crash, the supervisor would normally restart them.
+    #
+    # However, this usual behavior would cause a leak in the application, as the
+    # registry itself wouldn't be aware of the bucket restart (which essentially
+    # is a new bucket process, with a new pid). This would virtually turn each
+    # restarted bucket virtually unaccessible from the registry.
+    #
+    # Hence, crashed buckets don't need to be restarted by the supervisor. To do
+    # so, the `:temporary` value for the `:restart` option is provided below,
+    # which instructs the `child_spec/1` function accordingly.
+    restart: :temporary
 
   @type t :: pid()
 
