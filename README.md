@@ -1,4 +1,0 @@
-# HelloElixir
-
-**TODO: Add description**
-
