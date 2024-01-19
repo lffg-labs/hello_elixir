@@ -17,9 +17,12 @@ defmodule KV.MixProject do
 
   # Run "mix help compile.app" to learn about applications.
   def application do
+    dev_apps = [:observer, :wx, :runtime_tools]
+    extra_apps = if(Mix.env() == :dev, do: dev_apps, else: [])
+
     [
       mod: {KV, []},
-      extra_applications: [:logger]
+      extra_applications: [:logger] ++ extra_apps
     ]
   end
 
