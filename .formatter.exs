@@ -1,5 +1,10 @@
 # Used by "mix format"
 [
-  inputs: ["mix.exs", "config/*.exs", "experiments/*"],
-  subdirectories: ["apps/*"]
+  inputs: [
+    ".formatter.exs",
+    "mix.exs",
+    "config/*.exs",
+    "apps/**/*.{ex,exs}",
+    "experiments/**/*.{ex,exs}"
+  ]
 ]
