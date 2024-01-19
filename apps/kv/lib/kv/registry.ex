@@ -42,21 +42,43 @@ defmodule KV.Registry do
 
   @impl GenServer
   def init([]) do
-    {:ok, %{}}
+    names = %{}
+    refs = %{}
+    {:ok, {names, refs}}
   end
 
   @impl GenServer
-  def handle_call({:lookup, name}, _from, names) do
-    {:reply, Map.fetch(names, name), names}
+  def handle_call({:lookup, name}, _from, state) do
+    {names, _refs} = state
+    {:reply, Map.fetch(names, name), state}
   end
 
   @impl GenServer
-  def handle_cast({:create, name}, names) do
+  def handle_cast({:create, name}, {names, refs}) do
     if Map.has_key?(names, name) do
-      {:noreply, names}
+      {:noreply, {names, refs}}
     else
       {:ok, bucket} = KV.Bucket.start_link()
-      {:noreply, Map.put(names, name, bucket)}
+      ref = Process.monitor(bucket)
+
+      names = Map.put(names, name, bucket)
+      refs = Map.put(refs, ref, name)
+
+      {:noreply, {names, refs}}
     end
+  end
+
+  @impl GenServer
+  def handle_info({:DOWN, ref, :process, _pid, _reason}, {names, refs}) do
+    {name, refs} = Map.pop(refs, ref)
+    names = Map.delete(names, name)
+    {:noreply, {names, refs}}
+  end
+
+  @impl GenServer
+  def handle_info(msg, state) do
+    import Logger
+    info("Unexpected message in #{__MODULE__}: #{inspect(msg)}")
+    {:noreply, state}
   end
 end
