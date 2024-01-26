@@ -33,24 +33,48 @@ defmodule KVServer do
     {:ok, addr} = :inet.peername(socket)
     Logger.info("serving #{inspect(addr)}")
 
-    answer_with_lines(socket)
+    :gen_tcp.send(socket, "Welcome\n")
+    serve(socket, addr)
   end
 
-  defp answer_with_lines(socket) do
-    socket
-    |> read_line()
-    |> write_line(socket)
+  defp serve(socket, addr) do
+    msg =
+      case read_line(socket) do
+        {:ok, data} ->
+          case KVServer.Command.parse(data) do
+            {:ok, command} -> KVServer.Command.run(command)
+            {:error, _} = err -> err
+          end
 
-    answer_with_lines(socket)
+        {:error, _} = err ->
+          err
+      end
+
+    :ok = write_line(socket, addr, msg)
+    serve(socket, addr)
   end
 
   defp read_line(socket) do
-    # this will error out when the client closes the connection
-    {:ok, data} = :gen_tcp.recv(socket, 0)
-    data
+    :gen_tcp.recv(socket, 0)
   end
 
-  defp write_line(line, socket) do
-    :gen_tcp.send(socket, line)
+  defp write_line(socket, _addr, {:ok, text}) do
+    :gen_tcp.send(socket, text)
+  end
+
+  defp write_line(socket, _addr, {:error, :unknown_command}) do
+    :gen_tcp.send(socket, "UNKNOWN COMMAND\n")
+  end
+
+  defp write_line(_socket, addr, {:error, :closed}) do
+    # Close this handler process normally if the client closes the connection.
+    Logger.info("client #{inspect(addr)} disconnected")
+    exit(:shutdown)
+  end
+
+  defp write_line(socket, _addr, {:error, error}) do
+    :gen_tcp.send(socket, "ERROR\n")
+    Logger.warning("unknown error #{inspect(error)}")
+    exit(error)
   end
 end
