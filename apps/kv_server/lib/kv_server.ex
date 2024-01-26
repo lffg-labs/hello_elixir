@@ -49,7 +49,17 @@ defmodule KVServer do
   end
 
   defp read_line(socket) do
-    :gen_tcp.recv(socket, 0)
+    case :gen_tcp.recv(socket, 0) do
+      {:ok, data} ->
+        if String.trim(data) == "" do
+          {:error, :empty}
+        else
+          {:ok, data}
+        end
+
+      other ->
+        other
+    end
   end
 
   defp write_line(socket, _addr, {:ok, text}) do
@@ -58,6 +68,14 @@ defmodule KVServer do
 
   defp write_line(socket, _addr, {:error, :unknown_command}) do
     :gen_tcp.send(socket, "Unknown command.\n")
+  end
+
+  defp write_line(socket, _addr, {:error, :bucket_not_found, bucket}) do
+    :gen_tcp.send(socket, "Bucket `#{bucket}` not found.\n")
+  end
+
+  defp write_line(_socket, _addr, {:error, :empty}) do
+    :ok
   end
 
   defp write_line(_socket, addr, {:error, :closed}) do
